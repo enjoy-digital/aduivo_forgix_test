@@ -11,7 +11,8 @@ soft CPU in the FPGA.
 ## What This Tests
 
 - Build the LiteX-Boards `adiuvo_forgix` target.
-- Load the generated passive x1 Efinity image through the Forgix RP2350 loader.
+- Load the generated passive x1 Efinity image directly from MicroPython, or
+  through the Forgix RP2350 loader as a reference path.
 - Smoke-test the default UARTBone path.
 - Smoke-test the optional `--with-spibone` RP2350 path from MicroPython.
 
@@ -25,8 +26,18 @@ Wishbone master on the RP2350 passive-SPI pins:
 | SCK | 2 | F3 |
 | MOSI / bidirectional data | 3 | F2 |
 
-The MicroPython examples assume the FPGA has already been configured with a
-LiteX bitstream built with `--with-spibone`.
+The direct MicroPython loader uses the same RP2350 pins as the public Forge
+loader firmware:
+
+| Signal | RP2350 GPIO |
+| --- | ---: |
+| FPGA SS_N / CS | 1 |
+| FPGA SCLK | 2 |
+| FPGA MOSI | 3 |
+| FPGA RESET / CRESET_N | 4 |
+| FPGA DONE | 5 |
+| FPGA STATUS | 6 |
+| FPGA OSC_EN | 19 |
 
 ## References
 
@@ -45,8 +56,9 @@ LiteX bitstream built with `--with-spibone`.
 
 - LiteX and LiteX-Boards with the `adiuvo_forgix` target installed.
 - Efinix Efinity in `PATH`.
-- The Forgix loader firmware already running on the RP2350 for the load step.
-- `mpremote` for the MicroPython test step.
+- MicroPython running on the RP2350 for the direct load/test path.
+- `mpremote` for the MicroPython load/test step.
+- Optional: the Forgix loader firmware for the reference load path.
 
 Install the host-side Python helper:
 
@@ -82,7 +94,53 @@ Use `--no-compile` while iterating on the LiteX Python integration:
 python3 scripts/build_litex.py --no-compile
 ```
 
-## Load
+## MicroPython Direct Load And Test
+
+The preferred single-firmware flow is to run MicroPython on the RP2350, then
+let the RP2350 configure the FPGA over passive SPI and immediately reuse the
+same pins for SPIBone CSR access.
+
+Copy the MicroPython helper modules to the RP2350:
+
+```sh
+mpremote connect /dev/ttyACM0 fs cp micropython/fpga_loader.py :fpga_loader.py
+mpremote connect /dev/ttyACM0 fs cp micropython/spibone3.py :spibone3.py
+mpremote connect /dev/ttyACM0 fs cp micropython/csr.py :csr.py
+mpremote connect /dev/ttyACM0 fs cp micropython/test_forgix.py :test_forgix.py
+mpremote connect /dev/ttyACM0 fs cp micropython/load_and_test.py :load_and_test.py
+```
+
+Then either copy the Efinity passive-SPI image to the RP2350 filesystem:
+
+```sh
+mpremote connect /dev/ttyACM0 fs cp \
+    build/adiuvo_forgix/gateware/outflow/adiuvo_forgix.hex \
+    :adiuvo_forgix.hex
+
+mpremote connect /dev/ttyACM0 exec \
+    "import load_and_test; load_and_test.main('adiuvo_forgix.hex')"
+```
+
+Or avoid storing the bitstream in RP2350 flash by mounting the host build
+directory for the duration of the test:
+
+```sh
+mpremote connect /dev/ttyACM0 mount build/adiuvo_forgix/gateware/outflow exec \
+    "import load_and_test; load_and_test.main('/remote/adiuvo_forgix.hex')"
+```
+
+The loader accepts the Efinity `.hex` file directly. A `.bin` converted from
+the `.hex` also works and will load faster because MicroPython does not need to
+parse text while streaming to SPI.
+
+To only configure the FPGA, run:
+
+```sh
+mpremote connect /dev/ttyACM0 exec \
+    "import fpga_loader; fpga_loader.main('adiuvo_forgix.hex')"
+```
+
+## Forge Loader Reference Path
 
 Build or install the Forgix loader from the public Forgix repository, then point
 this repo at its host Python package:
@@ -128,14 +186,15 @@ This validates the base LiteX target without relying on RP2350-side firmware.
 
 ## MicroPython SPIBone Test
 
-This test requires the FPGA to be configured with the `--with-spibone` build.
-The RP2350 must be running MicroPython firmware, not the Forge loader firmware.
+This test requires the FPGA to already be configured with the `--with-spibone`
+build. If you used `load_and_test.py`, this step has already run.
 
 Copy the helper modules to the RP2350:
 
 ```sh
 mpremote connect /dev/ttyACM0 fs cp micropython/spibone3.py :spibone3.py
 mpremote connect /dev/ttyACM0 fs cp micropython/csr.py :csr.py
+mpremote connect /dev/ttyACM0 fs cp micropython/test_forgix.py :test_forgix.py
 ```
 
 Run the test directly from the host:
@@ -157,16 +216,17 @@ python3 tools/csr2py.py build/adiuvo_forgix/csr.csv --output micropython/csr.py
 mpremote connect /dev/ttyACM0 fs cp micropython/csr.py :csr.py
 ```
 
-## Firmware Caveat
+## Loader Notes
 
-The Forgix loader firmware and the MicroPython firmware are separate RP2350
-images. The current flow is therefore:
+The MicroPython loader mirrors the public Forge loader firmware assumptions:
+SPI mode 3, passive width 1, `OSC_EN` enabled before programming, `SS_N`
+asserted before `CRESET_N` is released, `SS_N` held low through the transfer,
+and 32 extra zero bytes clocked after the bitstream.
 
-1. run the Forge loader firmware to configure the FPGA, or configure the FPGA by
-   another method,
-2. run MicroPython on the RP2350 to exercise SPIBone.
+The Forge loader remains useful as a known-good reference and for debugging the
+raw FPGA programming path. The direct MicroPython flow is intended for a simple
+one-cable validation setup: load the FPGA bitstream first, then exercise LiteX
+CSRs over SPIBone without reflashing the RP2350.
 
-A single-cable production test should merge these two roles in RP2350 firmware:
-load the FPGA bitstream first, then expose a USB-to-SPIBone bridge. The
-`litex_rp2040_pmod_test` `usb2spibone` firmware is the closest starting point
-for that approach.
+The `litex_rp2040_pmod_test` `usb2spibone` firmware is still the closest
+starting point for a faster native RP2350 USB-to-SPIBone bridge.
