@@ -9,6 +9,11 @@ https://github.com/enjoy-digital/litex_rp2040_pmod_test: use a small SPIBone
 bridge so an RP-family microcontroller can access LiteX CSRs without putting a
 soft CPU in the FPGA.
 
+> NOTE: This repository is preparing the expected Forgix LiteX bring-up flow
+> before hardware has been received. The flow is based on the public schematic,
+> KiCad files, and current LiteX support, so it should be close to working, but
+> it has not been validated on real hardware yet.
+
 ## Test Flow
 
 The flow is intentionally single-path:
