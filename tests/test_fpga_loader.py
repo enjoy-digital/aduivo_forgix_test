@@ -57,6 +57,9 @@ from micropython import fpga_loader
 
 
 class FPGALoaderParserTest(unittest.TestCase):
+    def test_default_pins_do_not_claim_miso(self):
+        self.assertNotIn("miso", fpga_loader.DEFAULT_PINS)
+
     def test_plain_hex_chunks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             bitstream = Path(tmp_dir) / "adiuvo_forgix.hex"
@@ -111,6 +114,33 @@ class FPGALoaderParserTest(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 list(fpga_loader.iter_bitstream_chunks(str(bitstream)))
+
+    def test_status_low_is_fatal(self):
+        class StatusLowLoader(fpga_loader.ForgixFPGALoader):
+            def __init__(self):
+                super().__init__()
+                self.aborted = False
+
+            def begin(self):
+                self.spi = types.SimpleNamespace(write=lambda data: None)
+
+            def finish(self):
+                return {"done" : 1, "status" : 0}
+
+            def abort(self):
+                self.aborted = True
+
+            def close(self):
+                pass
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            bitstream = Path(tmp_dir) / "adiuvo_forgix.hex"
+            bitstream.write_text("0a", encoding="utf-8")
+
+            loader = StatusLowLoader()
+            with self.assertRaises(OSError):
+                loader.program(str(bitstream), progress=False)
+            self.assertTrue(loader.aborted)
 
 
 if __name__ == "__main__":

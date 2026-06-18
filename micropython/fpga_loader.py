@@ -20,7 +20,6 @@ DEFAULT_PINS = {
     "done"    : 5,
     "status"  : 6,
     "osc_en"  : 19,
-    "miso"    : 0,
 }
 
 DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
@@ -69,6 +68,8 @@ class ForgixFPGALoader:
         try:
             self.spi = SPI(self.spi_id, **kwargs)
         except TypeError:
+            if "miso" not in self.pins or self.pins["miso"] is None:
+                raise TypeError("MicroPython SPI requires an explicit MISO pin.")
             kwargs["miso"] = Pin(self.pins["miso"])
             self.spi = SPI(self.spi_id, **kwargs)
 
@@ -127,10 +128,10 @@ class ForgixFPGALoader:
                     print("  wrote %u bytes" % written)
                     next_report += 64 * 1024
             state = self.finish()
-            if not state["status"]:
-                print("  warning: FPGA STATUS is low")
             if progress:
                 print("  DONE=%u STATUS=%u" % (state["done"], state["status"]))
+            if not state["status"]:
+                raise OSError("FPGA STATUS is low after configuration")
             return written
         except Exception:
             self.abort()

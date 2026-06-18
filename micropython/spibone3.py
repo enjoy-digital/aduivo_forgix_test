@@ -50,7 +50,7 @@ class SPIBone3Wire:
     def _deselect(self):
         self.cs_n.value(1)
         self.clk.value(0)
-        self._drive_data(1)
+        self._release_data()
         self._delay()
 
     def _write_bit(self, value):

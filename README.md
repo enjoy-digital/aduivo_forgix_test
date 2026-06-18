@@ -38,6 +38,9 @@ The MicroPython FPGA loader also uses the board configuration pins:
 | FPGA STATUS | 6 |
 | FPGA OSC_EN | 19 |
 
+The documented loader path only drives `CS_N`, `SCK`, and `MOSI`; it does not
+claim an RP2350 MISO pin.
+
 ## References
 
 - Forgix public files:
@@ -160,5 +163,8 @@ Done
 The MicroPython loader uses passive SPI width 1, SPI mode 3, `OSC_EN` before
 programming, `SS_N` low before releasing `CRESET_N`, `SS_N` held low through
 the transfer, and 32 extra zero bytes after the bitstream.
+
+The run aborts if `DONE` does not go high or if `STATUS` is low after
+configuration.
 
 The documented flow uses the generated Efinity `.hex` file directly.
