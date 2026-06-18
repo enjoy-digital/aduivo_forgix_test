@@ -67,7 +67,7 @@ python3 -m litex_boards.targets.adiuvo_forgix \
 Build the RP2350 SPIBone variant and regenerate the MicroPython CSR map:
 
 ```sh
-./scripts/build_litex.sh
+python3 scripts/build_litex.py
 ```
 
 The Efinity passive-SPI image is generated at:
@@ -79,7 +79,7 @@ build/adiuvo_forgix/gateware/outflow/adiuvo_forgix.hex
 Use `--no-compile` while iterating on the LiteX Python integration:
 
 ```sh
-./scripts/build_litex.sh --no-compile
+python3 scripts/build_litex.py --no-compile
 ```
 
 ## Load
