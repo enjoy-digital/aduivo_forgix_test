@@ -1,0 +1,25 @@
+# Auto-generated from LiteX csr.csv.
+# Source: build/adiuvo_forgix/csr.csv
+
+CSR_BASE_CTRL               = 0x00000000
+CSR_BASE_IDENTIFIER_MEM     = 0x00000800
+CSR_BASE_LEDS               = 0x00001000
+CSR_CTRL_RESET              = 0x00000000
+CSR_CTRL_SCRATCH            = 0x00000004
+CSR_CTRL_BUS_ERRORS         = 0x00000008
+CSR_LEDS_OUT                = 0x00001000
+CONFIG_PLATFORM_NAME        = 'adiuvo_forgix'
+CONFIG_CLOCK_FREQUENCY      = 0x01e84800
+CONFIG_CPU_TYPE_NONE        = 'None'
+CONFIG_CPU_VARIANT_STANDARD = 'None'
+CONFIG_CPU_FAMILY           = 'None'
+CONFIG_CPU_NAME             = 'None'
+CONFIG_CPU_HUMAN_NAME       = 'Unknown'
+CONFIG_CSR_DATA_WIDTH       = 0x00000020
+CONFIG_CSR_ALIGNMENT        = 0x00000020
+CONFIG_CSR_ORDERING_BIG     = 'None'
+CONFIG_BUS_STANDARD         = 'wishbone'
+CONFIG_BUS_DATA_WIDTH       = 0x00000020
+CONFIG_BUS_ADDRESS_WIDTH    = 0x00000020
+CONFIG_BUS_BURSTING         = 0x00000000
+MEMORY_CSR                  = 0x00000000
