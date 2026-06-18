@@ -1,25 +1,31 @@
 #
 # This file is part of Adiuvo Forgix LiteX Test.
 #
+# Copyright (c) 2026 Enjoy-Digital
 # SPDX-License-Identifier: BSD-2-Clause
 
 import sys
 import time
+
 from machine import Pin, SPI
+
+# Constants ----------------------------------------------------------------------------------------
 
 
 DEFAULT_PINS = {
-    "cs_n":    1,
-    "sck":     2,
-    "mosi":    3,
-    "reset_n": 4,
-    "done":    5,
-    "status":  6,
-    "osc_en": 19,
-    "miso":    0,
+    "cs_n"    : 1,
+    "sck"     : 2,
+    "mosi"    : 3,
+    "reset_n" : 4,
+    "done"    : 5,
+    "status"  : 6,
+    "osc_en"  : 19,
+    "miso"    : 0,
 }
 
 DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
+
+# FPGA Loader --------------------------------------------------------------------------------------
 
 
 class ForgixFPGALoader:
@@ -34,13 +40,13 @@ class ForgixFPGALoader:
     ):
         if pins is None:
             pins = DEFAULT_PINS
-        self.pins = pins
-        self.spi_id = spi_id
-        self.baudrate = baudrate
-        self.chunk_size = chunk_size
-        self.done_timeout_ms = done_timeout_ms
+        self.pins              = pins
+        self.spi_id            = spi_id
+        self.baudrate          = baudrate
+        self.chunk_size        = chunk_size
+        self.done_timeout_ms   = done_timeout_ms
         self.extra_clock_bytes = extra_clock_bytes
-        self.spi = None
+        self.spi               = None
 
     def _configure_pins(self):
         self.osc_en  = Pin(self.pins["osc_en"],  Pin.OUT, value=1)
@@ -52,13 +58,13 @@ class ForgixFPGALoader:
 
     def _configure_spi(self):
         kwargs = {
-            "baudrate": self.baudrate,
-            "polarity": 1,
-            "phase": 1,
-            "bits": 8,
-            "firstbit": SPI.MSB,
-            "sck": Pin(self.pins["sck"]),
-            "mosi": Pin(self.pins["mosi"]),
+            "baudrate" : self.baudrate,
+            "polarity" : 1,
+            "phase"    : 1,
+            "bits"     : 8,
+            "firstbit" : SPI.MSB,
+            "sck"      : Pin(self.pins["sck"]),
+            "mosi"     : Pin(self.pins["mosi"]),
         }
         try:
             self.spi = SPI(self.spi_id, **kwargs)
@@ -84,8 +90,8 @@ class ForgixFPGALoader:
             if self.done.value():
                 self.cs_n.value(1)
                 return {
-                    "done": self.done.value(),
-                    "status": self.status.value(),
+                    "done"   : self.done.value(),
+                    "status" : self.status.value(),
                 }
             time.sleep_ms(1)
 
@@ -132,6 +138,8 @@ class ForgixFPGALoader:
         finally:
             self.close()
 
+# Bitstream Helpers --------------------------------------------------------------------------------
+
 
 def iter_bitstream_chunks(path, chunk_size=1024):
     fmt = detect_bitstream_format(path)
@@ -153,8 +161,7 @@ def detect_bitstream_format(path):
 
 
 def _first_nonspace(path):
-    f = open(path, "rb")
-    try:
+    with open(path, "rb") as f:
         while True:
             data = f.read(256)
             if not data:
@@ -162,14 +169,11 @@ def _first_nonspace(path):
             for byte in data:
                 if not _is_space(byte):
                     return byte
-    finally:
-        f.close()
 
 
 def _iter_plain_hex_bytes(path):
     high = -1
-    f = open(path, "rb")
-    try:
+    with open(path, "rb") as f:
         while True:
             data = f.read(1024)
             if not data:
@@ -185,15 +189,12 @@ def _iter_plain_hex_bytes(path):
                     high = -1
         if high >= 0:
             raise ValueError("hex file has an odd number of hex digits")
-    finally:
-        f.close()
 
 
 def _iter_intel_hex_bytes(path):
     upper = 0
     next_address = None
-    f = open(path, "rb")
-    try:
+    with open(path, "rb") as f:
         while True:
             line = f.readline()
             if not line:
@@ -208,12 +209,12 @@ def _iter_intel_hex_bytes(path):
             if len(record) < 5:
                 raise ValueError("short Intel HEX record")
 
-            byte_count = record[0]
-            address = (record[1] << 8) | record[2]
+            byte_count  = record[0]
+            address     = (record[1] << 8) | record[2]
             record_type = record[3]
             if len(record) != byte_count + 5:
                 raise ValueError("bad Intel HEX record length")
-            data = record[4 : 4 + byte_count]
+            data     = record[4 : 4 + byte_count]
             checksum = record[4 + byte_count]
 
             if (sum(record[: 4 + byte_count]) + checksum) & 0xff:
@@ -241,8 +242,6 @@ def _iter_intel_hex_bytes(path):
                 if byte_count != 2:
                     raise ValueError("bad Intel HEX linear-address record")
                 upper = ((data[0] << 8) | data[1]) << 16
-    finally:
-        f.close()
 
 
 def _iter_chunked(byte_iter, chunk_size):
@@ -279,6 +278,8 @@ def _hex_value(byte):
 
 def _is_space(byte):
     return byte in (9, 10, 13, 32)
+
+# Run ----------------------------------------------------------------------------------------------
 
 
 def main(path=None):

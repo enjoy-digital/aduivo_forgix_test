@@ -1,12 +1,15 @@
 #
 # This file is part of Adiuvo Forgix LiteX Test.
 #
+# Copyright (c) 2026 Enjoy-Digital
 # SPDX-License-Identifier: BSD-2-Clause
 
 import time
 
 import csr
 from spibone3 import SPIBone3Wire, read_identifier
+
+# Tests --------------------------------------------------------------------------------------------
 
 
 def scratch_test(bus):
@@ -28,6 +31,8 @@ def leds_test(bus):
         print("  leds_out = 0x%x" % value)
         bus.write(csr.CSR_LEDS_OUT, value)
         time.sleep_ms(200)
+
+# Run ----------------------------------------------------------------------------------------------
 
 
 def main():

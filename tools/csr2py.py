@@ -3,12 +3,15 @@
 #
 # This file is part of Adiuvo Forgix LiteX Test.
 #
+# Copyright (c) 2026 Enjoy-Digital
 # SPDX-License-Identifier: BSD-2-Clause
 
-import argparse
-import csv
 import re
+import csv
+import argparse
 from pathlib import Path
+
+# Helpers ------------------------------------------------------------------------------------------
 
 
 def const_name(prefix, name):
@@ -33,6 +36,8 @@ def py_value(value):
         return f"0x{value:08x}"
     return repr(value)
 
+# Conversion ---------------------------------------------------------------------------------------
+
 
 def convert(path):
     constants = []
@@ -40,7 +45,10 @@ def convert(path):
         for row in csv.reader(line for line in f if not line.startswith("#")):
             if len(row) < 3:
                 continue
-            kind, name, value = row[0], row[1], parse_value(row[2])
+            kind  = row[0]
+            name  = row[1]
+            value = parse_value(row[2])
+
             if kind == "csr_base":
                 constants.append((const_name("CSR_BASE", name), value))
             elif kind == "csr_register":
@@ -66,11 +74,13 @@ def render(constants, source):
     lines.append("")
     return "\n".join(lines)
 
+# Run ----------------------------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Convert LiteX csr.csv to MicroPython constants.")
-    parser.add_argument("csr_csv", type=Path)
-    parser.add_argument("--output", "-o", type=Path, default=None)
+    parser.add_argument("csr_csv",       type=Path, help="LiteX CSR CSV file.")
+    parser.add_argument("--output", "-o", type=Path, default=None, help="Output Python file.")
     args = parser.parse_args()
 
     text = render(convert(args.csr_csv), args.csr_csv)

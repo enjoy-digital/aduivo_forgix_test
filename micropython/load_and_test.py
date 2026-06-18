@@ -1,6 +1,7 @@
 #
 # This file is part of Adiuvo Forgix LiteX Test.
 #
+# Copyright (c) 2026 Enjoy-Digital
 # SPDX-License-Identifier: BSD-2-Clause
 
 import sys
@@ -11,6 +12,8 @@ import test_forgix
 
 
 DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
+
+# Run ----------------------------------------------------------------------------------------------
 
 
 def main(path=None):

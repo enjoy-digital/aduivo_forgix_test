@@ -1,29 +1,35 @@
 #
 # This file is part of Adiuvo Forgix LiteX Test.
 #
+# Copyright (c) 2026 Enjoy-Digital
 # SPDX-License-Identifier: BSD-2-Clause
 
 import time
+
 from machine import Pin
+
+# Constants ----------------------------------------------------------------------------------------
 
 
 DEFAULT_PINS = {
-    "cs_n": 1,
-    "clk":  2,
-    "mosi": 3,
+    "cs_n" : 1,
+    "clk"  : 2,
+    "mosi" : 3,
 }
+
+# SPIBone ------------------------------------------------------------------------------------------
 
 
 class SPIBone3Wire:
     def __init__(self, pins=None, half_period_us=1, timeout_bytes=256):
         if pins is None:
             pins = DEFAULT_PINS
-        self.pin_mosi = pins["mosi"]
-        self.cs_n = Pin(pins["cs_n"], Pin.OUT, value=1)
-        self.clk  = Pin(pins["clk"],  Pin.OUT, value=0)
-        self.data = Pin(self.pin_mosi, Pin.OUT, value=1)
+        self.pin_mosi       = pins["mosi"]
+        self.cs_n           = Pin(pins["cs_n"], Pin.OUT, value=1)
+        self.clk            = Pin(pins["clk"],  Pin.OUT, value=0)
+        self.data           = Pin(self.pin_mosi, Pin.OUT, value=1)
         self.half_period_us = half_period_us
-        self.timeout_bytes  = timeout_bytes
+        self.timeout_bytes   = timeout_bytes
 
     def _delay(self):
         if self.half_period_us:
@@ -112,6 +118,8 @@ class SPIBone3Wire:
             self._wait_response(0x00)
         finally:
             self._deselect()
+
+# Helpers ------------------------------------------------------------------------------------------
 
 
 def read_identifier(bus, base, max_chars=256):
