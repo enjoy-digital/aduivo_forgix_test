@@ -10,9 +10,12 @@ from fpga_loader import ForgixFPGALoader
 import test_forgix
 
 
+DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
+
+
 def main(path=None):
     if path is None:
-        path = sys.argv[1] if len(sys.argv) > 1 else "adiuvo_forgix.hex"
+        path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BITSTREAM
 
     print("Forgix LiteX load-and-test")
     print("Loading FPGA:")

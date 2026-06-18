@@ -19,6 +19,8 @@ DEFAULT_PINS = {
     "miso":    0,
 }
 
+DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
+
 
 class ForgixFPGALoader:
     def __init__(
@@ -133,10 +135,7 @@ class ForgixFPGALoader:
 
 def iter_bitstream_chunks(path, chunk_size=1024):
     fmt = detect_bitstream_format(path)
-    if fmt == "bin":
-        for chunk in _iter_binary_chunks(path, chunk_size):
-            yield chunk
-    elif fmt == "ihex":
+    if fmt == "ihex":
         for chunk in _iter_chunked(_iter_intel_hex_bytes(path), chunk_size):
             yield chunk
     elif fmt == "hex":
@@ -147,10 +146,6 @@ def iter_bitstream_chunks(path, chunk_size=1024):
 
 
 def detect_bitstream_format(path):
-    lower = path.lower()
-    if lower.endswith(".bin") or lower.endswith(".bit"):
-        return "bin"
-
     first = _first_nonspace(path)
     if first == ord(":"):
         return "ihex"
@@ -167,18 +162,6 @@ def _first_nonspace(path):
             for byte in data:
                 if not _is_space(byte):
                     return byte
-    finally:
-        f.close()
-
-
-def _iter_binary_chunks(path, chunk_size):
-    f = open(path, "rb")
-    try:
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
-            yield chunk
     finally:
         f.close()
 
@@ -300,7 +283,7 @@ def _is_space(byte):
 
 def main(path=None):
     if path is None:
-        path = sys.argv[1] if len(sys.argv) > 1 else "adiuvo_forgix.hex"
+        path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BITSTREAM
     print("Programming FPGA from %s" % path)
     loader = ForgixFPGALoader()
     written = loader.program(path)
