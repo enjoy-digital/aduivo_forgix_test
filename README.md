@@ -56,7 +56,7 @@ The MicroPython FPGA loader also uses the board configuration pins:
 - MicroPython running on the Forgix RP2350.
 - `mpremote` on the host.
 
-Install the host-side helper:
+Install `mpremote`:
 
 ```sh
 python3 -m pip install -r requirements.txt
@@ -64,10 +64,13 @@ python3 -m pip install -r requirements.txt
 
 ## Build
 
-Build the SPIBone test design and regenerate the MicroPython CSR map:
+Build the SPIBone test design:
 
 ```sh
-python3 scripts/build_litex.py
+python3 -m litex_boards.targets.adiuvo_forgix \
+    --build \
+    --with-spibone \
+    --output-dir build/adiuvo_forgix
 ```
 
 The generated passive-SPI image is:
@@ -76,10 +79,20 @@ The generated passive-SPI image is:
 build/adiuvo_forgix/gateware/outflow/adiuvo_forgix.hex
 ```
 
+Regenerate the MicroPython CSR map from the LiteX build:
+
+```sh
+python3 tools/csr2py.py build/adiuvo_forgix/csr.csv --output micropython/csr.py
+```
+
 For a quick LiteX integration check without running Efinity place-and-route:
 
 ```sh
-python3 scripts/build_litex.py --no-compile
+python3 -m litex_boards.targets.adiuvo_forgix \
+    --build \
+    --with-spibone \
+    --output-dir build/adiuvo_forgix \
+    --no-compile
 ```
 
 ## Load And Test
