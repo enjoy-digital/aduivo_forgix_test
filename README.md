@@ -95,6 +95,14 @@ python3 -m litex_boards.targets.adiuvo_forgix \
     --no-compile
 ```
 
+## Host Checks
+
+The parser tests do not require hardware:
+
+```sh
+python3 -m unittest discover -s tests
+```
+
 ## Load And Test
 
 Copy the MicroPython test modules to the RP2350:
@@ -117,12 +125,35 @@ mpremote connect /dev/ttyACM0 mount build/adiuvo_forgix/gateware/outflow exec \
 The bitstream is read from `/remote/adiuvo_forgix.hex` through `mpremote mount`;
 it is not copied to RP2350 flash.
 
-Expected output:
+Expected transcript shape:
 
-- FPGA programming progress and `DONE/STATUS`,
-- the LiteX identifier string,
-- scratch CSR write/readback checks,
-- a short RGB LED pattern through the `leds_out` CSR.
+```text
+Forgix LiteX load-and-test
+Loading FPGA:
+  wrote 65536 bytes
+  wrote 131072 bytes
+  ...
+  DONE=1 STATUS=1
+Programmed <bitstream-size> bytes
+Forgix LiteX SPIBone test
+Identifier:
+  LiteX SoC on Adiuvo Forgix ...
+Scratch CSR:
+  original: 0x........
+  write/read: 0x12345678 / 0x12345678
+  write/read: 0xa5a55a5a / 0xa5a55a5a
+  write/read: 0x........ / 0x........
+LED CSR:
+  leds_out = 0x0
+  leds_out = 0x1
+  leds_out = 0x2
+  leds_out = 0x4
+  leds_out = 0x7
+  leds_out = 0x0
+  leds_out = 0x7
+  leds_out = 0x0
+Done
+```
 
 ## Loader Notes
 
