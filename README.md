@@ -69,6 +69,30 @@ Install `mpremote`:
 python3 -m pip install -r requirements.txt
 ```
 
+## Board Firmware
+
+The Forgix RP2350 must be running MicroPython before using this test flow.
+`mpremote` talks to the MicroPython REPL and filesystem; a factory Pico SDK CDC
+firmware or UF2 bootloader device is not enough.
+
+If needed, put the RP2350 in UF2 bootloader mode and copy the Raspberry Pi Pico
+2 MicroPython UF2 from https://micropython.org/download/RPI_PICO2/ onto the
+mounted `RP2350` drive.
+
+Verify the board firmware before loading the FPGA:
+
+```sh
+mpremote connect /dev/ttyACM0 exec \
+    "import sys; print(sys.platform); print(sys.implementation.name)"
+```
+
+Expected output:
+
+```text
+rp2
+micropython
+```
+
 ## Build
 
 Build the SPIBone test design:
