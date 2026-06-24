@@ -9,10 +9,9 @@ https://github.com/enjoy-digital/litex_rp2040_pmod_test: use a small SPIBone
 bridge so an RP-family microcontroller can access LiteX CSRs without putting a
 soft CPU in the FPGA.
 
-> NOTE: This repository is preparing the expected Forgix LiteX bring-up flow
-> before hardware has been received. The flow is based on the public schematic,
-> KiCad files, and current LiteX support, so it should be close to working, but
-> it has not been validated on real hardware yet.
+> NOTE: This flow was validated on real Forgix hardware on 2026-06-24 with
+> MicroPython v1.28.0 on the RP2350 and Efinity 2025.1 generating the passive
+> x1 FPGA image.
 
 ## Test Flow
 
@@ -127,11 +126,12 @@ Run the complete test while mounting the host bitstream directory:
 
 ```sh
 mpremote connect /dev/ttyACM0 mount build/adiuvo_forgix/gateware/outflow exec \
-    "import load_and_test; load_and_test.main()"
+    "import sys; sys.path.append('/'); import load_and_test; load_and_test.main()"
 ```
 
 The bitstream is read from `/remote/adiuvo_forgix.hex` through `mpremote mount`;
-it is not copied to RP2350 flash.
+it is not copied to RP2350 flash. The `sys.path` addition keeps the modules
+copied to the RP2350 root filesystem importable while `/remote` is mounted.
 
 Expected transcript shape:
 
