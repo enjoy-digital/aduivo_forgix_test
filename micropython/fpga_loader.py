@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 import sys
+import os
 import time
 
 from machine import Pin, SPI
@@ -22,7 +23,8 @@ DEFAULT_PINS = {
     "osc_en"  : 19,
 }
 
-DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
+DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.bin"
+FALLBACK_BITSTREAM = "/remote/adiuvo_forgix.hex"
 
 # FPGA Loader --------------------------------------------------------------------------------------
 
@@ -33,7 +35,7 @@ class ForgixFPGALoader:
         pins=None,
         spi_id=0,
         baudrate=8000000,
-        chunk_size=1024,
+        chunk_size=4096,
         done_timeout_ms=500,
         extra_clock_bytes=32,
     ):
@@ -144,7 +146,10 @@ class ForgixFPGALoader:
 
 def iter_bitstream_chunks(path, chunk_size=1024):
     fmt = detect_bitstream_format(path)
-    if fmt == "ihex":
+    if fmt == "bin":
+        for chunk in _iter_binary_chunks(path, chunk_size):
+            yield chunk
+    elif fmt == "ihex":
         for chunk in _iter_chunked(_iter_intel_hex_bytes(path), chunk_size):
             yield chunk
     elif fmt == "hex":
@@ -155,6 +160,8 @@ def iter_bitstream_chunks(path, chunk_size=1024):
 
 
 def detect_bitstream_format(path):
+    if path.lower().endswith(".bin"):
+        return "bin"
     first = _first_nonspace(path)
     if first == ord(":"):
         return "ihex"
@@ -176,7 +183,7 @@ def _iter_plain_hex_bytes(path):
     high = -1
     with open(path, "rb") as f:
         while True:
-            data = f.read(1024)
+            data = f.read(4096)
             if not data:
                 break
             for byte in data:
@@ -190,6 +197,15 @@ def _iter_plain_hex_bytes(path):
                     high = -1
         if high >= 0:
             raise ValueError("hex file has an odd number of hex digits")
+
+
+def _iter_binary_chunks(path, chunk_size=1024):
+    with open(path, "rb") as f:
+        while True:
+            data = f.read(chunk_size)
+            if not data:
+                break
+            yield data
 
 
 def _iter_intel_hex_bytes(path):
@@ -280,12 +296,20 @@ def _hex_value(byte):
 def _is_space(byte):
     return byte in (9, 10, 13, 32)
 
+
+def default_bitstream():
+    try:
+        os.stat(DEFAULT_BITSTREAM)
+        return DEFAULT_BITSTREAM
+    except OSError:
+        return FALLBACK_BITSTREAM
+
 # Run ----------------------------------------------------------------------------------------------
 
 
 def main(path=None):
     if path is None:
-        path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BITSTREAM
+        path = sys.argv[1] if len(sys.argv) > 1 else default_bitstream()
     print("Programming FPGA from %s" % path)
     loader = ForgixFPGALoader()
     written = loader.program(path)

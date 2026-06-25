@@ -110,6 +110,14 @@ The generated passive-SPI image is:
 build/adiuvo_forgix/gateware/outflow/adiuvo_forgix.hex
 ```
 
+Generate the raw binary image used by the faster loader path:
+
+```sh
+python3 tools/bitstream2bin.py \
+    build/adiuvo_forgix/gateware/outflow/adiuvo_forgix.hex \
+    --output build/adiuvo_forgix/gateware/outflow/adiuvo_forgix.bin
+```
+
 Regenerate the MicroPython CSR map from the LiteX build:
 
 ```sh
@@ -153,20 +161,23 @@ mpremote connect /dev/ttyACM0 mount build/adiuvo_forgix/gateware/outflow exec \
     "import sys; sys.path.append('/'); import load_and_test; load_and_test.main()"
 ```
 
-The bitstream is read from `/remote/adiuvo_forgix.hex` through `mpremote mount`;
-it is not copied to RP2350 flash. The `sys.path` addition keeps the modules
-copied to the RP2350 root filesystem importable while `/remote` is mounted.
+The bitstream is read through `mpremote mount`; it is not copied to RP2350
+flash. When `/remote/adiuvo_forgix.bin` is present, the loader uses it instead
+of parsing the text `.hex` file on the RP2350. If the `.bin` file is absent, it
+falls back to `/remote/adiuvo_forgix.hex`. The `sys.path` addition keeps the
+modules copied to the RP2350 root filesystem importable while `/remote` is
+mounted.
 
 Expected transcript shape:
 
 ```text
 Forgix LiteX load-and-test
-Loading FPGA:
+Loading FPGA from /remote/adiuvo_forgix.bin:
   wrote 65536 bytes
   wrote 131072 bytes
   ...
   DONE=1 STATUS=1
-Programmed <bitstream-size> bytes
+Programmed <bitstream-size> bytes in <elapsed-ms> ms
 Forgix LiteX SPIBone test
 Identifier:
   LiteX SoC on Adiuvo Forgix ...
@@ -196,4 +207,6 @@ the transfer, and 32 extra zero bytes after the bitstream.
 The run aborts if `DONE` does not go high or if `STATUS` is low after
 configuration.
 
-The documented flow uses the generated Efinity `.hex` file directly.
+The documented fast path uses a host-generated `.bin` decoded from the Efinity
+`.hex` file. The loader can still use the generated `.hex` file directly when
+the `.bin` file is not present.

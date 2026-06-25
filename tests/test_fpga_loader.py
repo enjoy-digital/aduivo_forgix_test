@@ -71,6 +71,17 @@ class FPGALoaderParserTest(unittest.TestCase):
                 bytearray(b"\x0d"),
             ])
 
+    def test_binary_chunks(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            bitstream = Path(tmp_dir) / "adiuvo_forgix.bin"
+            bitstream.write_bytes(b"\x0a\x0b\x0c\x0d")
+
+            chunks = list(fpga_loader.iter_bitstream_chunks(str(bitstream), chunk_size=3))
+            self.assertEqual(chunks, [
+                b"\x0a\x0b\x0c",
+                b"\x0d",
+            ])
+
     def test_intel_hex_chunks(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             bitstream = Path(tmp_dir) / "adiuvo_forgix.hex"

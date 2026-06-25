@@ -7,24 +7,24 @@
 import sys
 import time
 
-from fpga_loader import ForgixFPGALoader
+from fpga_loader import ForgixFPGALoader, default_bitstream
 import test_forgix
 
-
-DEFAULT_BITSTREAM = "/remote/adiuvo_forgix.hex"
 
 # Run ----------------------------------------------------------------------------------------------
 
 
 def main(path=None):
     if path is None:
-        path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BITSTREAM
+        path = sys.argv[1] if len(sys.argv) > 1 else default_bitstream()
 
     print("Forgix LiteX load-and-test")
-    print("Loading FPGA:")
+    print("Loading FPGA from %s:" % path)
     loader = ForgixFPGALoader()
+    start = time.ticks_ms()
     written = loader.program(path)
-    print("Programmed %u bytes" % written)
+    elapsed = time.ticks_diff(time.ticks_ms(), start)
+    print("Programmed %u bytes in %u ms" % (written, elapsed))
 
     time.sleep_ms(50)
     test_forgix.main()
