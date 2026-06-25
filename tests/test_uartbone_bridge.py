@@ -42,6 +42,29 @@ def frame(command, length, word_address, values=()):
     return bytes(data)
 
 
+class FakeStream:
+    def __init__(self, data=b""):
+        self.data = bytearray(data)
+        self.writes = bytearray()
+
+    @property
+    def buffer(self):
+        return self
+
+    def read(self, count):
+        if not self.data:
+            return b""
+        data = self.data[:count]
+        del self.data[:count]
+        return bytes(data)
+
+    def write(self, data):
+        self.writes.extend(data)
+
+    def flush(self):
+        pass
+
+
 # Tests --------------------------------------------------------------------------------------------
 
 
@@ -140,6 +163,16 @@ class UARTBoneBridgeTest(unittest.TestCase):
 
         self.assertEqual(response, b"")
         self.assertEqual(bus.reads, [])
+
+    def test_idle_escape_sequence_exits_run_loop(self):
+        bus = FakeBus()
+        bridge = uartbone_bridge.UARTBoneBridge(bus)
+        stream = FakeStream(uartbone_bridge.DEFAULT_ESCAPE_BYTE * uartbone_bridge.DEFAULT_ESCAPE_COUNT)
+
+        bridge.run(input_stream=stream, output_stream=stream)
+
+        self.assertEqual(bus.reads, [])
+        self.assertEqual(bus.writes, [])
 
 
 if __name__ == "__main__":

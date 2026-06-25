@@ -66,6 +66,7 @@ claim an RP2350 MISO pin.
 - `mpremote` on the host.
 - `litex_server`/`litex_client` available from the LiteX installation for the
   UARTBone-compatible host bridge.
+- LiteScope from the LiteX ecosystem for the optional integrated capture demo.
 - DearPyGui on the host for the optional graphical demo.
 
 Install the Python host tools used by this repository:
@@ -152,6 +153,42 @@ python3 -m litex_boards.targets.adiuvo_forgix \
 
 Then regenerate `micropython/csr.py` from `build/adiuvo_forgix_demo/csr.csv`.
 
+For the richer GUI demo with PWM controls, edge-connector outputs, and
+LiteScope capture probes, build the demo variant with the extra options:
+
+```sh
+python3 -m litex_boards.targets.adiuvo_forgix \
+    --build \
+    --with-spibone \
+    --with-demo-leds \
+    --with-demo-io \
+    --with-demo-scope \
+    --demo-scope-depth 512 \
+    --output-dir build/adiuvo_forgix_demo
+```
+
+This generates both the normal SoC CSR map and the LiteScope analyzer map:
+
+```text
+build/adiuvo_forgix_demo/csr.csv
+build/adiuvo_forgix_demo/analyzer.csv
+```
+
+It also keeps the integrated analyzer small enough for the T8F49 by capturing
+the visible LED/demo signals and the low SPIBone bus lanes with a 512-sample
+depth.
+
+For the fast MicroPython loader path, generate the binary bitstream and the CSR
+map that matches this rich demo build:
+
+```sh
+python3 tools/bitstream2bin.py \
+    build/adiuvo_forgix_demo/gateware/outflow/adiuvo_forgix.hex \
+    --output build/adiuvo_forgix_demo/gateware/outflow/adiuvo_forgix.bin
+
+python3 tools/csr2py.py build/adiuvo_forgix_demo/csr.csv --output micropython/csr.py
+```
+
 ## Host Checks
 
 The parser tests do not require hardware:
@@ -177,6 +214,13 @@ Run the complete test while mounting the host bitstream directory:
 
 ```sh
 mpremote connect /dev/ttyACM0 mount build/adiuvo_forgix/gateware/outflow exec \
+    "import sys; sys.path.append('/'); import load_and_test; load_and_test.main()"
+```
+
+For the rich GUI demo bitstream, use the matching output directory instead:
+
+```sh
+mpremote connect /dev/ttyACM0 mount build/adiuvo_forgix_demo/gateware/outflow exec \
     "import sys; sys.path.append('/'); import load_and_test; load_and_test.main()"
 ```
 
@@ -216,6 +260,9 @@ LED CSR:
   leds_out = 0x0
 Done
 ```
+
+With the rich demo bitstream, the LED lines are printed as `demo_leds_rgb`
+instead of `leds_out`.
 
 ## Fancy Demos
 
@@ -295,7 +342,7 @@ litex_server \
 With the server running, standard LiteX clients can be reused:
 
 ```sh
-litex_cli --host=localhost --port=1234 --csr-csv=build/adiuvo_forgix/csr.csv --regs
+litex_cli --host=localhost --port=1234 --csr-csv=build/adiuvo_forgix/csr.csv --ident --regs
 ```
 
 For the demo LED gateware variant, point clients at
@@ -307,14 +354,23 @@ to the MicroPython REPL instead of the bridge. Stop `litex_server`, reload the
 FPGA if needed, rerun `tools/start_uartbone_bridge.py`, and start a fresh
 `litex_server`.
 
+The bridge disables MicroPython Ctrl-C handling while it owns the USB stream.
+With the current `micropython/uartbone_bridge.py`, send the idle escape sequence
+to stop the bridge and return to a normal MicroPython REPL without resetting the
+RP2350:
+
+```sh
+python3 tools/stop_uartbone_bridge.py --port /dev/ttyACM0
+```
+
 Installing `micropython/uartbone_main.py` as `main.py` is possible for
 standalone experiments, but it is not the default Forgix test flow. On this
 board, resetting the RP2350 can disturb the FPGA configuration, so the
 recommended path is to load the FPGA first and then start the bridge with the
 host helper above.
 
-To return the RP2350 to the normal MicroPython REPL after a transient bridge
-session, reset the RP2350:
+If the board is running an older bridge without the idle escape handler, return
+the RP2350 to the normal MicroPython REPL with a board reset:
 
 ```sh
 mpremote connect /dev/ttyACM0 reset
@@ -334,11 +390,20 @@ and access latency, and drives the RGB LEDs. When the `--with-demo-leds`
 gateware is loaded, it also exposes the hardware demo mode, RGB mask, speed,
 and counter.
 
+With the richer demo bitstream, the GUI also exposes:
+
+- direct RGB PWM duty-cycle sliders and PWM period control,
+- pattern and manual trigger controls,
+- edge-connector output mask/value controls for the Teensy-style pins,
+- integrated LiteScope captures of LED/pattern signals and SPIBone bus
+  transactions through the same RP2350 UARTBone bridge.
+
 The GUI can also start `litex_server` itself:
 
 ```sh
 python3 host/forgix_gui.py \
     --csr-csv build/adiuvo_forgix_demo/csr.csv \
+    --analyzer-csv build/adiuvo_forgix_demo/analyzer.csv \
     --start-server \
     --uart-port /dev/ttyACM0
 ```

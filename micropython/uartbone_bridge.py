@@ -35,6 +35,8 @@ WRITE_COMMANDS = (
 COMMANDS = READ_COMMANDS + WRITE_COMMANDS
 
 DEFAULT_ADDR_BYTES = 4
+DEFAULT_ESCAPE_BYTE = b"\x1d"
+DEFAULT_ESCAPE_COUNT = 3
 
 # Helpers ------------------------------------------------------------------------------------------
 
@@ -172,7 +174,8 @@ class UARTBoneBridge:
 
         return response
 
-    def run(self, input_stream=None, output_stream=None, timeout_ms=250):
+    def run(self, input_stream=None, output_stream=None, timeout_ms=250,
+        escape_byte=DEFAULT_ESCAPE_BYTE, escape_count=DEFAULT_ESCAPE_COUNT):
         if input_stream is None:
             input_stream = sys.stdin
         if output_stream is None:
@@ -181,6 +184,7 @@ class UARTBoneBridge:
         poller = _make_poller(input_stream)
         reader = _binary_stream(input_stream)
         writer = _binary_stream(output_stream)
+        escape_seen = 0
 
         while True:
             if poller is not None:
@@ -194,6 +198,13 @@ class UARTBoneBridge:
             if not data:
                 continue
 
+            if escape_byte is not None and not self.pending() and data == escape_byte:
+                escape_seen += 1
+                if escape_seen >= escape_count:
+                    return
+                continue
+            escape_seen = 0
+
             response = self.feed(data)
             if response:
                 _write_stream(writer, response)
@@ -202,9 +213,11 @@ class UARTBoneBridge:
 
 
 def main(bus=None, addr_bytes=DEFAULT_ADDR_BYTES, half_period_us=1, timeout_bytes=256, timeout_ms=250):
+    micropython_module = None
     try:
         import micropython
-        micropython.kbd_intr(-1)
+        micropython_module = micropython
+        micropython_module.kbd_intr(-1)
     except ImportError:
         pass
 
@@ -213,7 +226,11 @@ def main(bus=None, addr_bytes=DEFAULT_ADDR_BYTES, half_period_us=1, timeout_byte
             raise RuntimeError("SPIBone3Wire is unavailable; pass an explicit bus")
         bus = SPIBone3Wire(half_period_us=half_period_us, timeout_bytes=timeout_bytes)
 
-    UARTBoneBridge(bus, addr_bytes=addr_bytes).run(timeout_ms=timeout_ms)
+    try:
+        UARTBoneBridge(bus, addr_bytes=addr_bytes).run(timeout_ms=timeout_ms)
+    finally:
+        if micropython_module is not None:
+            micropython_module.kbd_intr(3)
 
 
 if __name__ == "__main__":

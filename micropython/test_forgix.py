@@ -27,9 +27,21 @@ def scratch_test(bus):
 def leds_test(bus):
     print("LED CSR:")
     sequence = [0x0, 0x1, 0x2, 0x4, 0x7, 0x0, 0x7, 0x0]
+    if hasattr(csr, "CSR_LEDS_OUT"):
+        led_csr = csr.CSR_LEDS_OUT
+        mode_csr = None
+        label = "leds_out"
+    elif hasattr(csr, "CSR_DEMO_LEDS_RGB") and hasattr(csr, "CSR_DEMO_LEDS_MODE"):
+        led_csr = csr.CSR_DEMO_LEDS_RGB
+        mode_csr = csr.CSR_DEMO_LEDS_MODE
+        label = "demo_leds_rgb"
+        bus.write(mode_csr, 0)
+    else:
+        raise RuntimeError("no LED CSR is available")
+
     for value in sequence:
-        print("  leds_out = 0x%x" % value)
-        bus.write(csr.CSR_LEDS_OUT, value)
+        print("  %s = 0x%x" % (label, value))
+        bus.write(led_csr, value)
         time.sleep_ms(200)
 
 # Run ----------------------------------------------------------------------------------------------
