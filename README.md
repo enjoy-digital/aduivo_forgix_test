@@ -1,5 +1,7 @@
 # Adiuvo Forgix LiteX Test
 
+[![CI](https://github.com/enjoy-digital/aduivo_forgix_test/actions/workflows/ci.yml/badge.svg)](https://github.com/enjoy-digital/aduivo_forgix_test/actions/workflows/ci.yml)
+
 This repository documents one practical test flow for the LiteX-Boards
 `adiuvo_forgix` target: build the RP2350 SPIBone design, load the FPGA from
 MicroPython, then exercise LiteX CSRs over SPIBone.

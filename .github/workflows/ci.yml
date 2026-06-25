@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git \
+            wget \
+            python3 \
+            python3-pip \
+            python3-setuptools
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip setuptools wheel
+          python3 -m pip install -r requirements.txt
+
+      - name: Run Python tests
+        run: python3 -m unittest discover -s tests
+
+      - name: Install LiteX
+        run: |
+          mkdir -p "$HOME/litex"
+          cd "$HOME/litex"
+          wget -q https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
+          chmod +x litex_setup.py
+          ./litex_setup.py --init --install --user --config=standard --clone-depth=1
+
+      - name: Run LiteX no-compile export
+        run: |
+          python3 -m litex_boards.targets.adiuvo_forgix \
+              --build \
+              --with-spibone \
+              --output-dir build/adiuvo_forgix \
+              --no-compile
+
+      - name: Check generated CSR map
+        run: |
+          python3 tools/csr2py.py build/adiuvo_forgix/csr.csv --output /tmp/csr.py
+          diff -u micropython/csr.py /tmp/csr.py
