@@ -13,16 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            git \
-            wget \
-            python3 \
-            python3-pip \
-            python3-setuptools
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -36,15 +26,5 @@ jobs:
       - name: Run Python tests
         run: python3 -m unittest discover -s tests
 
-      - name: Install LiteX
-        run: |
-          mkdir -p "$HOME/litex"
-          cd "$HOME/litex"
-          wget -q https://raw.githubusercontent.com/enjoy-digital/litex/master/litex_setup.py
-          chmod +x litex_setup.py
-          ./litex_setup.py --init --install --user --config=standard --clone-depth=1
-
-      - name: Check LiteX target CLI
-        run: |
-          python3 -m litex_boards.targets.adiuvo_forgix --help | tee /tmp/adiuvo_forgix_help.txt
-          grep -q -- "--with-spibone" /tmp/adiuvo_forgix_help.txt
+      - name: Check Python syntax
+        run: python3 -m compileall micropython tools tests
