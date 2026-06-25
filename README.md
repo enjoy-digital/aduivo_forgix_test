@@ -136,6 +136,19 @@ python3 -m litex_boards.targets.adiuvo_forgix \
     --no-compile
 ```
 
+To build a variant where the FPGA runs the RGB LED animation itself after a
+single SPIBone command, add the optional demo LED core:
+
+```sh
+python3 -m litex_boards.targets.adiuvo_forgix \
+    --build \
+    --with-spibone \
+    --with-demo-leds \
+    --output-dir build/adiuvo_forgix_demo
+```
+
+Then regenerate `micropython/csr.py` from `build/adiuvo_forgix_demo/csr.csv`.
+
 ## Host Checks
 
 The parser tests do not require hardware:
@@ -153,6 +166,7 @@ mpremote connect /dev/ttyACM0 fs cp micropython/fpga_loader.py :fpga_loader.py
 mpremote connect /dev/ttyACM0 fs cp micropython/spibone3.py :spibone3.py
 mpremote connect /dev/ttyACM0 fs cp micropython/csr.py :csr.py
 mpremote connect /dev/ttyACM0 fs cp micropython/test_forgix.py :test_forgix.py
+mpremote connect /dev/ttyACM0 fs cp micropython/demo_forgix.py :demo_forgix.py
 mpremote connect /dev/ttyACM0 fs cp micropython/load_and_test.py :load_and_test.py
 ```
 
@@ -199,6 +213,46 @@ LED CSR:
   leds_out = 0x0
 Done
 ```
+
+## Fancy Demos
+
+After the FPGA has been loaded, the board-only demo runner can reuse the same
+SPIBone CSR path for more visible RGB LED activity:
+
+```sh
+mpremote connect /dev/ttyACM0 exec \
+    "import demo_forgix; demo_forgix.main('show')"
+```
+
+Available modes:
+
+- `quick`: identifier read, scratch CSR round-trip, short RGB blink.
+- `show`: color chase, binary count, and a simple software PWM fade.
+- `stress`: repeated scratch CSR checks while the RGB LED remains active.
+
+The second argument sets the number of cycles:
+
+```sh
+mpremote connect /dev/ttyACM0 exec \
+    "import demo_forgix; demo_forgix.main('show', 3)"
+```
+
+Expected transcript shape:
+
+```text
+Forgix LED show
+Software LED demo:
+  color chase
+  binary count
+  white fade
+Done
+```
+
+The default CPU-less gateware exposes `CSR_LEDS_OUT`, so the demo effects are
+driven directly from MicroPython and finish with the LEDs off. When the
+`--with-demo-leds` LiteX variant exposes `CSR_DEMO_LEDS_MODE`,
+`CSR_DEMO_LEDS_RGB`, and `CSR_DEMO_LEDS_SPEED`, the `show` mode automatically
+uses that hardware demo core instead.
 
 ## Loader Notes
 
