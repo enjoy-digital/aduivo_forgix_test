@@ -27,4 +27,4 @@ jobs:
         run: python3 -m unittest discover -s tests
 
       - name: Check Python syntax
-        run: python3 -m compileall micropython tools tests
+        run: python3 -m compileall host micropython tools tests

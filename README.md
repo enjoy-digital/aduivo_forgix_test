@@ -64,8 +64,11 @@ claim an RP2350 MISO pin.
 - Efinix Efinity in `PATH`.
 - MicroPython running on the Forgix RP2350.
 - `mpremote` on the host.
+- `litex_server`/`litex_client` available from the LiteX installation for the
+  UARTBone-compatible host bridge.
+- DearPyGui on the host for the optional graphical demo.
 
-Install `mpremote`:
+Install the Python host tools used by this repository:
 
 ```sh
 python3 -m pip install -r requirements.txt
@@ -253,6 +256,92 @@ driven directly from MicroPython and finish with the LEDs off. When the
 `--with-demo-leds` LiteX variant exposes `CSR_DEMO_LEDS_MODE`,
 `CSR_DEMO_LEDS_RGB`, and `CSR_DEMO_LEDS_SPEED`, the `show` mode automatically
 uses that hardware demo core instead.
+
+## UARTBone-Compatible Host Bridge
+
+For host-side tools, the RP2350 can run a MicroPython bridge that speaks the
+same binary UARTBone framing used by LiteX `CommUART`. This lets the regular
+LiteX server own the USB serial link and exposes the FPGA CSRs through the
+standard LiteX TCP/Etherbone path.
+
+Copy the bridge modules to the board:
+
+```sh
+mpremote connect /dev/ttyACM0 fs cp micropython/spibone3.py :spibone3.py
+mpremote connect /dev/ttyACM0 fs cp micropython/uartbone_bridge.py :uartbone_bridge.py
+```
+
+Load the FPGA first, then start the bridge without resetting the RP2350:
+
+```sh
+python3 tools/start_uartbone_bridge.py --port /dev/ttyACM0
+```
+
+This helper starts `uartbone_bridge.main()` with `mpremote exec`, waits for the
+bridge loop to run on the RP2350, then closes only the host-side `mpremote`
+process so `litex_server` can own the same serial port.
+
+The bridge is intentionally silent once running. Start the LiteX server in a
+separate terminal:
+
+```sh
+litex_server \
+    --uart \
+    --uart-port=/dev/ttyACM0 \
+    --uart-baudrate=1000000 \
+    --addr-width=32
+```
+
+With the server running, standard LiteX clients can be reused:
+
+```sh
+litex_cli --host=localhost --port=1234 --csr-csv=build/adiuvo_forgix/csr.csv --regs
+```
+
+For the demo LED gateware variant, point clients at
+`build/adiuvo_forgix_demo/csr.csv` instead.
+
+If the identifier output contains garbled text, `MicroPython`, `>>>`, or
+ASCII-looking register values such as `0x6963726f`, the LiteX server is talking
+to the MicroPython REPL instead of the bridge. Stop `litex_server`, reload the
+FPGA if needed, rerun `tools/start_uartbone_bridge.py`, and start a fresh
+`litex_server`.
+
+Installing `micropython/uartbone_main.py` as `main.py` is possible for
+standalone experiments, but it is not the default Forgix test flow. On this
+board, resetting the RP2350 can disturb the FPGA configuration, so the
+recommended path is to load the FPGA first and then start the bridge with the
+host helper above.
+
+To return the RP2350 to the normal MicroPython REPL after a transient bridge
+session, reset the RP2350:
+
+```sh
+mpremote connect /dev/ttyACM0 reset
+```
+
+## Graphical Host Demo
+
+The DearPyGui host demo talks only to the LiteX TCP server. Start
+`litex_server` as shown above, then run:
+
+```sh
+python3 host/forgix_gui.py --csr-csv build/adiuvo_forgix/csr.csv
+```
+
+The GUI reads the identifier, exercises the scratch CSR, monitors bus errors
+and access latency, and drives the RGB LEDs. When the `--with-demo-leds`
+gateware is loaded, it also exposes the hardware demo mode, RGB mask, speed,
+and counter.
+
+The GUI can also start `litex_server` itself:
+
+```sh
+python3 host/forgix_gui.py \
+    --csr-csv build/adiuvo_forgix_demo/csr.csv \
+    --start-server \
+    --uart-port /dev/ttyACM0
+```
 
 ## Loader Notes
 
